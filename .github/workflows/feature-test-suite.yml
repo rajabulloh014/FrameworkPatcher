@@ -62,7 +62,16 @@ jobs:
           find_source_jar() {
             local base="$1"
             local relative="$2"
-            find "$base" -type f -path "*/${relative}/${relative}.jar" | head -n1
+
+            if [ ! -d "$base" ]; then
+              echo ""
+              return 0
+            fi
+
+            # Support both layouts:
+            # - Sources/android14/global/framework.jar
+            # - Sources/.../framework/framework.jar
+            find "$base" -type f \( -name "${relative}.jar" -o -path "*/${relative}/${relative}.jar" \) 2>/dev/null | sort | head -n1
           }
 
           FRAMEWORK_SRC="$(find_source_jar "$SOURCE_BASE" framework)"
