@@ -86,13 +86,13 @@ d8_optimize_jar() {
     local d8_cmd="${D8_CMD:-d8}"
     
     if ! command -v "$d8_cmd" >/dev/null 2>&1; then
-        echo "[ERROR] d8 command not found. Skipping optimization."
-        return 1
+        echo "[WARN] d8 command not found. Skipping optimization."
+        return 0
     fi
 
     if ! command -v zip >/dev/null 2>&1; then
-        echo "[ERROR] zip command not found. Skipping optimization."
-        return 1
+        echo "[WARN] zip command not found. Skipping optimization."
+        return 0
     fi
 
     echo "[INFO] Starting D8 DEX optimization for target: $(basename "$jar_file")"
@@ -109,10 +109,10 @@ d8_optimize_jar() {
     # We ignore resources and META-INF to process code only.
     echo "[INFO] Extracting DEX files..."
     if ! unzip -q -j "$jar_file" "*.dex" -d "$work_dir/raw"; then
-        echo "[ERROR] Failed to extract DEX files. Skipping optimization."
+        echo "[WARN] Failed to extract DEX files. Skipping optimization."
         mv "${jar_file}.bak" "$jar_file"
         rm -rf "$work_dir"
-        return 1
+        return 0
     fi
     
     # Verify extraction
@@ -127,25 +127,28 @@ d8_optimize_jar() {
     # --release: Removes debug information (lines, source files) to reduce size.
     # --min-api: Ensures proper multidex partitioning.
     echo "[INFO] Executing D8 merge and redivision..."
-    "$d8_cmd" "$work_dir/raw"/*.dex \
+    local d8_stderr="$work_dir/d8.stderr.log"
+    if ! "$d8_cmd" "$work_dir/raw"/*.dex \
         --output "$work_dir/out" \
         --min-api "$MIN_API" \
-        --release
-
-    # Check execution status
-    if [ $? -ne 0 ]; then
-        echo "[ERROR] D8 compilation failed (exit code). Retaining original file."
+        --release 2> >(tee "$d8_stderr" >&2); then
+        if grep -qi "defined multiple times" "$d8_stderr" 2>/dev/null; then
+            echo "[WARN] D8 skipped due to duplicate class definitions across input DEX files."
+            echo "[WARN] Keeping rebuilt JAR without D8 optimization: $(basename "$jar_file")"
+        else
+            echo "[WARN] D8 compilation failed. Keeping rebuilt JAR without optimization."
+        fi
         mv "${jar_file}.bak" "$jar_file"
         rm -rf "$work_dir"
-        return 1
+        return 0
     fi
 
     # Check for output files (in case D8 exited 0 but produced nothing, e.g. API level warning)
     if [ -z "$(ls -A "$work_dir/out" 2>/dev/null)" ]; then
-        echo "[ERROR] D8 compilation produced no output (check warnings). Retaining original file."
+        echo "[WARN] D8 compilation produced no output. Keeping rebuilt JAR without optimization."
         mv "${jar_file}.bak" "$jar_file"
         rm -rf "$work_dir"
-        return 1
+        return 0
     fi
 
     # 3. Update the JAR archive
@@ -167,10 +170,10 @@ d8_optimize_jar() {
     ) && zip_success=1
 
     if [ $zip_success -ne 1 ]; then
-        echo "[ERROR] Failed to update JAR with optimized DEX files. restoring backup."
+        echo "[WARN] Failed to update JAR with optimized DEX files. Restoring rebuilt JAR without optimization."
         mv "${jar_file}.bak" "$jar_file"
         rm -rf "$work_dir"
-        return 1
+        return 0
     fi
 
     # 4. Cleanup and Reporting
