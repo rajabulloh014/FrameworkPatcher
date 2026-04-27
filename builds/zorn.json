@@ -1,0 +1,23 @@
+{
+  "device": "zorn",
+  "builds": {
+    "3.30303": {
+      "android_version": "16",
+      "patch_version": "3.0.0",
+      "features": [
+        "disable_signature_verification"
+      ],
+      "build_time": "2026-04-27T17:09:53Z",
+      "git_commit": "8192c41",
+      "checksums": {
+        "framework_patched.jar": "sha256:8a6a072d0cd429ed7b4bc721cdef9e3c6c3ce2e1a6b7b1f0133518e6eb971070",
+        "services_patched.jar": "sha256:30c9bb367d1a78c6bd19252865fb2c399782b370f734d3aefc12d1975bd76a6b",
+        "miui-services_patched.jar": "sha256:ca31062d0f11e4c79c9730329644e520f70f0a823a32a763be773105bdf55b7a",
+        "module_zip": "sha256:8286c98101169f5d4068b05ea04eef6b310588fe670f39faec03a6652914fb05"
+      },
+      "workflow_run_id": "25008841351",
+      "release_url": "https://github.com/rajabulloh014/FrameworkPatcher/actions/runs/25008841351"
+    }
+  },
+  "last_updated": "2026-04-27T17:10:32Z"
+}
